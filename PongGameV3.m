@@ -1,0 +1,315 @@
+% Andres Candido ----- Final project, Tennis(ish)-Pong . Version 3
+
+                 %+---------------------+% 
+                 %|   Tennis(ish)-Pong  |%
+%+-------------------------------------------------------+%
+%|                    Game Controls:                     |%
+%|       Player 1                       Player 2         |%
+%|          w                              ↑             |%
+%|        a s d                          ← ↓ →           |%
+%|                                                       |%
+%|                     How to win:                       |%
+%|            Each goal is worth 15 points.              |% 
+%|    First player to score 4 goals (60 points) wins!    |%
+%|     The winner is displayed in the Command Window.    |%
+%|                       Enjoy!                          |%
+%+-------------------------------------------------------+%
+
+
+ function [] = MyPong() % I'm using this function to make all variables nested, 
+                        % I began making global variables at first but it becomes 
+                        % tedious to manage many variables that way, this is easier. 
+
+%----------------------------- Setup ------------------------------------% 
+clear; clc; close all;
+
+GameOutline = [];
+GameBoard = [];
+GB_Height = 100;
+GB_Width = 200;
+Ball =[];
+Player1 = [];
+Player2 = [];
+Player_Height = 9;
+
+BallPos = [];
+BallVel = [];
+Player1Center = [];
+Player2Center = [];
+Player1Vel = [];
+Player2Vel = [];
+score = [];
+s1 = [];
+s2 = [];
+winner = []; 
+quitGame = false;
+
+
+%--------------------------- functions ----------------------------------%
+function createfigure % creates figure, plot, ball, players, etc 
+    GameOutline = figure('Color',[.8 .4 .3],'KeyPressFcn',@HoldKey,...
+    'KeyReleaseFcn',@ReleaseKey,'units','normal','position',[.1 .1 .8 .8]);
+%figure can't be resized
+    set(GameOutline, 'Resize', 'off');
+ 
+    GameBoard = axes('color',[.2 .2 .9],'XLim',[0 GB_Width],...
+        'YLim',[0 GB_Height],'position',[.05 .05 .9 .9]);
+%remove axes labels and marks  
+    set(GameBoard,'XTicklabels',[],'YTickLabels',[],'XTick',[],'YTick',[]);
+
+%outlines are the white on the tennis court
+    line([0 GB_Width], [GB_Height GB_Height],'linewidth',5,'color','white');      % outLineTop
+    line([0 GB_Width], [0 0],'linewidth',5,'color','white');                      % outlineBot
+    line([.5 .5], [0 GB_Height],'linewidth',5,'color','white');                   % outlineLeft
+    line([GB_Width-.5 GB_Width-.5], [0 GB_Height],'linewidth',5,'color','white'); % outlineRight
+    line([GB_Width/2 GB_Width/2], [0 GB_Height],'linewidth',5,'color','white');   % outlineMid
+    line([60 140], [GB_Height/2 GB_Height/2],'linewidth',3,'color','white');      % outlineMid2
+    line([60 60], [8 92],'linewidth',3,'color','white');                          % outlineMidL
+    line([140 140], [8 92],'linewidth',3,'color','white');                        % outlineMidR
+    line([0 GB_Width], [92 92],'linewidth',3,'color','white');                    % outlineOutTop
+    line([0 GB_Width], [8 8],'linewidth',3,'color','white');                      % outlineOutBot
+
+%the header is the black rectangle where the scores are displayed 
+%the spacer is the white line between scores 
+    line([80 120], [95 95],'linewidth',65,'color','black'); % header
+    line([97 103], [95 95],'linewidth',5,'color','white');  % spacer
+    s1 = text(87,95.5,'0','Color','white','FontSize',40);   % score 1 display
+    s2 = text(109,95.5,'0','Color','white','FontSize',40);  % score 2 display
+
+
+    BallVel = [1,1];
+    BallPos = [40,50];            % center of ball in the [X , Y] axis
+    Ball = line(BallPos(1),BallPos(2),'marker','.','markersize',40,'color','yellow');
+
+
+    Player1Center = [10 50];     % center of player 1 in the [X , Y] axis
+    Player1 = line([10 10],[Player1Center(2)-Player_Height Player1Center(2)+Player_Height],...
+          'linewidth',6,'color','green');
+
+
+    Player2Center = [190 50];     % center of player 2 in the [X , Y] axis
+    Player2 = line([190 190],[Player2Center(2)-Player_Height Player2Center(2)+Player_Height],...
+    'linewidth',6,'color','red');
+
+end
+
+function newGame % optinal function for if I want to expand the game
+                 % and let players play multiple games or sets without quitting.
+                 % Not very useful at the moment.
+
+    winner = 0;    %normally 0. 1 if player1 wins, 2 if player2 wins
+
+    score = [0, 0];  %1x2 vector holding player scores [Player1, Player2]     
+
+    Player1Vel = [0,0]; %velocity on the [X , Y] axis 
+                        %holds either 0, -1, or 1 for paddle movement  
+    Player2Vel = [0,0];
+
+end
+
+function moveBall % sets ball boundaries and makes the ball bounce
+
+    if BallPos(2) < 0 || BallPos(2) > GB_Height  %ball bounce check top & bot
+        BallVel(2) = - BallVel(2);
+    end
+
+    if BallPos(1) < Player1Center(1)+2 && BallPos(1) > Player1Center(1)-2          % ball bounce check player1
+        if BallPos(2) < Player1Center(2)+Player_Height && BallPos(2) > Player1Center(2)-Player_Height
+            if BallVel(1) == -1
+                BallVel(1) = - BallVel(1);
+            end
+        end
+    end
+
+    if BallPos(1) < Player2Center(1)+2 && BallPos(1) > Player2Center(1)-2        % ball bounce check player2
+        if BallPos(2) < Player2Center(2)+Player_Height && BallPos(2) > Player2Center(2)-Player_Height
+            if BallVel(1) ==1
+                BallVel(1) = - BallVel(1);
+            end
+        end
+    end
+  
+   BallPos = BallPos + BallVel;                      % update ball position
+   
+end
+
+function movePlayers % sets player boundaries and updates player position
+
+    Player1Center(1) = Player1Center(1) + Player1Vel(1); %set new player1 X
+    Player1Center(2) = Player1Center(2) + Player1Vel(2); %set new player1 Y
+
+    Player2Center(1) = Player2Center(1) + Player2Vel(1); %set new player2 X
+    Player2Center(2) = Player2Center(2) + Player2Vel(2); %set new player2 Y
+
+    % Set player boundaries. if out of bounds, move it in bounds
+    if Player1Center(2)+Player_Height > GB_Height     %player 1 top bound
+        Player1Center(2) = GB_Height-Player_Height;
+    elseif Player1Center(2)-Player_Height < 0         %player 1 bot bound
+        Player1Center(2) = Player_Height;
+    end
+    if Player1Center(1) > (GB_Width/2)-1              %player 1 right bound
+        Player1Center(1) = (GB_Width/2)-1;
+    elseif Player1Center(1) < 1                       %player 1 left bound
+        Player1Center(1) = 1;
+    end
+
+
+    if Player2Center(2)+Player_Height > GB_Height     %player 2 top bound
+        Player2Center(2) = GB_Height-Player_Height;
+    elseif Player2Center(2)-Player_Height < 0         %player 2 bot bound
+        Player2Center(2) = Player_Height;
+    end
+    if Player2Center(1) < (GB_Width/2)+1              %player 2 left bound
+        Player2Center(1) = (GB_Width/2)+1;
+    elseif Player2Center(1) > GB_Width-1              %player 2 right bound
+        Player2Center(1) = GB_Width-1;
+    end
+   
+end
+
+function refreshPlot % updates ball and players in the GameBoard (plot)
+
+    set(Ball,'XData',BallPos(1),'YData',BallPos(2));  % update ball
+
+    set(Player1,'YData', ...                         % update player 1
+        [Player1Center(2)-Player_Height, Player1Center(2)+Player_Height], ...
+        'XData',[Player1Center(1), Player1Center(1)]) 
+    
+    set(Player2,'YData', ...                         % update player 2
+        [Player2Center(2)-Player_Height, Player2Center(2)+Player_Height], ...
+        'XData',[Player2Center(1), Player2Center(1)]) 
+    drawnow;                          % matlab's drawnow refreshes plots
+    pause(.01);
+end
+
+function resetGame   %this func resets ball & players positions after
+                          % a goal. it also updates the score displays
+    BallVel = [1,1];
+    BallPos = [40,50];
+
+    Player1Center = [10 50];
+
+    Player2Center = [190 50];
+
+    if score(1) > 0   % if the score is 0, don't update so that the score display stays centered
+        delete(s1);
+        s1 = text(84,95.5,[num2str(score(1))],'Color','white','FontSize',40);
+    end
+    if score(2) >0
+        delete(s2);
+        s2 = text(107,95.5,[num2str(score(2))],'Color','white','FontSize',40);
+    end
+
+end
+
+function checkGoal    %this func checks if a goal is scored, also if 
+    goal = false;     %a player wins, displays message & quits game
+
+    if BallPos(1) > GB_Width
+        score(1) = score(1)+15;
+        if score(1) == 60
+            winner = 1;
+        end
+        goal = true;
+    elseif BallPos(1) < 0 
+        score(2) = score(2)+15;
+        if score(2) == 60
+            winner = 2;
+        end
+        goal = true;
+    end
+
+    if goal == true %a goal was scored 
+      pause(.01);
+      resetGame;   % reset positions & update score displays
+      if winner == 1               % player 1 wins
+          disp('Player 1 wins!');
+          quitGame = true;
+      elseif winner == 2           % player 2 wins
+          disp('Player 2 wins!');
+          quitGame = true;
+      end
+    end
+end
+
+function HoldKey(figure,event) % This func allows both players to move
+                                    % simultaneously while the keys are held
+                                    
+    switch event.Key
+        case 'd'
+            Player1Vel(1) = 1;
+        case 'a'
+            Player1Vel(1) = -1;
+        case 'w'
+            Player1Vel(2) = 1;
+        case 's'
+            Player1Vel(2) = -1;
+
+
+        case 'rightarrow'
+            Player2Vel(1) = 1;
+        case 'leftarrow'
+            Player2Vel(1) = -1;
+        case 'uparrow'
+            Player2Vel(2) = 1;
+        case 'downarrow'
+            Player2Vel(2) = -1;
+    end  
+    
+  end
+
+function ReleaseKey(figure,event)  % This func stops players from 
+                                        % moving after releasing a key
+    switch event.Key
+        case 'd'
+            if Player1Vel(1) == 1
+                Player1Vel(1) = 0;
+            end
+        case 'a'
+            if Player1Vel(1) == -1
+                Player1Vel(1) = 0;
+            end
+        case 'w'
+            if Player1Vel(2) == 1
+                Player1Vel(2) = 0;
+            end
+        case 's'
+            if Player1Vel(2) == -1
+                Player1Vel(2) = 0;
+            end
+
+
+        case 'rightarrow'
+            if Player2Vel(1) == 1
+                Player2Vel(1) = 0;
+            end
+        case 'leftarrow'
+            if Player2Vel(1) == -1
+                Player2Vel(1) = 0;
+            end        
+        case 'uparrow'
+            if Player2Vel(2) == 1
+                Player2Vel(2) = 0;
+            end
+        case 'downarrow'
+            if Player2Vel(2) == -1
+                Player2Vel(2) = 0;
+            end
+
+    end
+
+end
+
+%------------------------- MAIN -----------------------------%
+createfigure;
+newGame;
+while ~quitGame % here the game runs until a a player wins (score 4 points)
+
+  moveBall;
+  movePlayers;
+  refreshPlot;
+  checkGoal;
+  
+end
+close(GameOutline); % figure is closed after a player wins
+end
